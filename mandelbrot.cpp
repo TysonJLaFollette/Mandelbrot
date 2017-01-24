@@ -7,6 +7,7 @@ CS3100 section 001, fall 2017 */
 #include <chrono>
 #include<numeric>
 #include<cmath>
+#include<thread>
 
 struct Color {
         int red;
@@ -104,6 +105,10 @@ void testFunction(){
 }
 int main() {
     //Algorithm designed after pseudocode from wikipedia.
+    std::thread t0;
+    std::thread t1;
+    std::thread t2;
+    std::thread t3;
     averageAndDeviationOfFunction([=](){testFunction();},10);
     std::cout << "See mandelbrot.ppm for image.\n";
 }
