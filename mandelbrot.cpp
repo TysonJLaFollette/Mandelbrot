@@ -42,9 +42,31 @@ void prepBuffer(std::vector< std::vector<Color> > &renderArray, double scale, in
 	    std::vector<Color> newRow;
 	    newRow.reserve(x2-x1);
         renderArray.push_back(newRow);
+        for (int j=0; j<x2-x1;j++) {
+            Color color;
+            renderArray[i].push_back(color);
+        }
 	}
 }
-
+std::vector<std::vector<Color>> threadedFourGenerateImage(double scale, int maxIterations, int x1, int y1, int x2, int y2){
+    //divide image into numthreads parts vertically.
+    int partitionHeight = (y2-y1)/4;
+    std::vector<std::vector<Color>> renderArray;
+    prepBuffer(renderArray,scal,x1,y1,x2,y2);
+    std::thread t0(threadedGeneratePartial(renderArray,scale, maxIterations, x1, y1,x2, partitionHeight-1));
+    std::thread t1(threadedGeneratePartial(renderArray,scale,maxIterations,x1,partitionHeight,x2,partitionHeight*2-1));
+    std::thread t2(threadedGeneratePartial(renderArray,scale,maxIterations,x1,partitionHeight*2, x2,partitionHeight*3-1));
+    std::thread t3(threadedGeneratePartial(renderArray,scale,maxIterations,x1,partitionHeight*3,x2,partitionHeight*4-1));
+    return renderArray;
+}
+void threadedGeneratePartial(double scale, int maxIterations, int x1, int y1, int x2, int y2){
+    for (int i = y1; i < y2; i++) {
+        for (int j = x1; j<x2; j++) {
+            Color pixelColor = getPixelColor(j,i,scale,maxIterations);
+            plot(renderArray, j-x1, i-y1, pixelColor);
+        }
+    }
+}
 std::vector<std::vector<Color>> generateImage(double scale, int maxIterations, int x1, int y1, int x2, int y2) {
     std::vector<std::vector<Color>> renderArray;
     prepBuffer(renderArray, scale, x1, y1, x2, y2);
