@@ -7,7 +7,7 @@ CS3100 section 001, fall 2017 */
 #include <chrono>
 #include<numeric>
 #include<cmath>
-#include<thread>
+#include <thread>
 
 struct Color {
         int red;
@@ -16,7 +16,7 @@ struct Color {
     };
 
 void plot(std::vector< std::vector<Color> > &renderArray, int x, int y, Color color) {
-    renderArray.at(y).push_back(color);
+    renderArray.at(y).at(x) = color;
 }
 
 Color getPixelColor(int pixelx, int pixely, double scale, int maxIterations){
@@ -41,22 +41,26 @@ void prepBuffer(std::vector< std::vector<Color> > &renderArray, double scale, in
 	for (int i = 0; i < y2-y1; i++) {
 	    std::vector<Color> newRow;
 	    newRow.reserve(x2-x1);
-        renderArray.push_back(newRow);
-        for (int j=0; j<x2-x1;j++) {
+	    for (int j=0; j<x2-x1;j++) {
             Color color;
-            renderArray[i].push_back(color);
+            newRow.push_back(color);
         }
+        renderArray.push_back(newRow);
 	}
 }
 std::vector<std::vector<Color>> threadedFourGenerateImage(double scale, int maxIterations, int x1, int y1, int x2, int y2){
     //divide image into numthreads parts vertically.
     int partitionHeight = (y2-y1)/4;
     std::vector<std::vector<Color>> renderArray;
-    prepBuffer(renderArray,scal,x1,y1,x2,y2);
+    prepBuffer(renderArray,scale,x1,y1,x2,y2);
     std::thread t0(threadedGeneratePartial(renderArray,scale, maxIterations, x1, y1,x2, partitionHeight-1));
     std::thread t1(threadedGeneratePartial(renderArray,scale,maxIterations,x1,partitionHeight,x2,partitionHeight*2-1));
     std::thread t2(threadedGeneratePartial(renderArray,scale,maxIterations,x1,partitionHeight*2, x2,partitionHeight*3-1));
     std::thread t3(threadedGeneratePartial(renderArray,scale,maxIterations,x1,partitionHeight*3,x2,partitionHeight*4-1));
+    t0.join();
+    t1.join();
+    t2.join();
+    t3.join();
     return renderArray;
 }
 void threadedGeneratePartial(double scale, int maxIterations, int x1, int y1, int x2, int y2){
@@ -127,10 +131,8 @@ void testFunction(){
 }
 int main() {
     //Algorithm designed after pseudocode from wikipedia.
-    std::thread t0;
-    std::thread t1;
-    std::thread t2;
-    std::thread t3;
-    averageAndDeviationOfFunction([=](){testFunction();},10);
+    //averageAndDeviationOfFunction([=](){testFunction();},10);
+    writeFile(threadedFourGenerateImage(200,255,0,0,700,400));
+    //writeFile(generateImage(200,255,0,0,700,400));
     std::cout << "See mandelbrot.ppm for image.\n";
 }
