@@ -36,7 +36,7 @@ Color getPixelColor(int pixelx, int pixely, double scale, int maxIterations){
     color.red = color.green = color.blue = std::log(iteration)*255/std::log(maxIterations);
     return color;
 }
-void prepBuffer(std::vector< std::vector<Color> > &renderArray, double scale, int x1, int y1, int x2, int y2){
+void prepBuffer(std::vector< std::vector<Color> > &renderArray, int x1, int y1, int x2, int y2){
     renderArray.reserve(y2-y1);
 	for (int i = 0; i < y2-y1; i++) {
 	    std::vector<Color> newRow;
@@ -61,7 +61,7 @@ std::vector<std::vector<Color>> threadedFourGenerateImage(double scale, int maxI
     //divide image into numthreads parts vertically.
     int partitionHeight = (y2-y1)/4;
     std::vector<std::vector<Color>> renderArray;
-    prepBuffer(renderArray,scale,x1,y1,x2,y2);
+    prepBuffer(renderArray,x1,y1,x2,y2);
     std::thread t0(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1,x2,partitionHeight-1);
     std::thread t1(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight,x2,partitionHeight*2-1);
     std::thread t2(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*2, x2,partitionHeight*3-1);
@@ -76,7 +76,7 @@ std::vector<std::vector<Color>> threadedEightGenerateImage(double scale, int max
     //divide image into numthreads parts vertically.
     int partitionHeight = (y2-y1)/8;
     std::vector<std::vector<Color>> renderArray;
-    prepBuffer(renderArray,scale,x1,y1,x2,y2);
+    prepBuffer(renderArray,x1,y1,x2,y2);
     std::thread t0(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1,x2,partitionHeight-1);
     std::thread t1(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight,x2,partitionHeight*2-1);
     std::thread t2(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*2,x2,partitionHeight*3-1);
@@ -97,7 +97,7 @@ std::vector<std::vector<Color>> threadedEightGenerateImage(double scale, int max
 }
 std::vector<std::vector<Color>> generateImage(double scale, int maxIterations, int x1, int y1, int x2, int y2) {
     std::vector<std::vector<Color>> renderArray;
-    prepBuffer(renderArray, scale, x1, y1, x2, y2);
+    prepBuffer(renderArray, x1, y1, x2, y2);
     //loop through the given space, checking each pixel's divergence.
     for (int i = y1; i < y2; i++){
         for (int j = x1; j < x2; j++){
@@ -147,7 +147,7 @@ void averageAndDeviationOfFunction(F functiontotime, int timestorun) {
     }
     auto standardDeviation = std::sqrt((numeratorSum)/timestorun);
     std::cout << timestorun << " iterations. ";
-    for(int i = 0; i < runtimes.size(); i++) {
+    for(unsigned int i = 0; i < runtimes.size(); i++) {
 		std::cout << runtimes.at(i) << "ms ";
 	}
 	std::cout << "\nAverage: " << mean << "ms. Standard Deviation: " << standardDeviation << "ms.\n";
