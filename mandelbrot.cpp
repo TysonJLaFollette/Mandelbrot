@@ -2,7 +2,7 @@
 CS3100 section 001, fall 2017 */
 #include <iostream>
 #include <fstream>
-#include <functional>
+//#include <functional>
 #include<vector>
 #include <chrono>
 #include<numeric>
@@ -48,35 +48,58 @@ void prepBuffer(std::vector< std::vector<Color> > &renderArray, double scale, in
         renderArray.push_back(newRow);
 	}
 }
+
+void threadedGeneratePartial(std::vector<std::vector<Color>> &renderArray, double scale, int maxIterations, int x1, int y1, int x2, int y2){
+    for (int i = y1; i <= y2; i++) {
+        for (int j = x1; j<x2; j++) {
+            Color pixelColor = getPixelColor(j,i,scale,maxIterations);
+            plot(renderArray, j, i, pixelColor);
+        }
+    }
+}
 std::vector<std::vector<Color>> threadedFourGenerateImage(double scale, int maxIterations, int x1, int y1, int x2, int y2){
     //divide image into numthreads parts vertically.
     int partitionHeight = (y2-y1)/4;
     std::vector<std::vector<Color>> renderArray;
     prepBuffer(renderArray,scale,x1,y1,x2,y2);
-    std::thread t0(threadedGeneratePartial(renderArray,scale, maxIterations, x1, y1,x2, partitionHeight-1));
-    std::thread t1(threadedGeneratePartial(renderArray,scale,maxIterations,x1,partitionHeight,x2,partitionHeight*2-1));
-    std::thread t2(threadedGeneratePartial(renderArray,scale,maxIterations,x1,partitionHeight*2, x2,partitionHeight*3-1));
-    std::thread t3(threadedGeneratePartial(renderArray,scale,maxIterations,x1,partitionHeight*3,x2,partitionHeight*4-1));
+    std::thread t0(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1,x2,partitionHeight-1);
+    std::thread t1(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight,x2,partitionHeight*2-1);
+    std::thread t2(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*2, x2,partitionHeight*3-1);
+    std::thread t3(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*3,x2,partitionHeight*4-1);
     t0.join();
     t1.join();
     t2.join();
     t3.join();
     return renderArray;
 }
-void threadedGeneratePartial(double scale, int maxIterations, int x1, int y1, int x2, int y2){
-    for (int i = y1; i < y2; i++) {
-        for (int j = x1; j<x2; j++) {
-            Color pixelColor = getPixelColor(j,i,scale,maxIterations);
-            plot(renderArray, j-x1, i-y1, pixelColor);
-        }
-    }
+std::vector<std::vector<Color>> threadedEightGenerateImage(double scale, int maxIterations, int x1, int y1, int x2, int y2){
+    //divide image into numthreads parts vertically.
+    int partitionHeight = (y2-y1)/8;
+    std::vector<std::vector<Color>> renderArray;
+    prepBuffer(renderArray,scale,x1,y1,x2,y2);
+    std::thread t0(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1,x2,partitionHeight-1);
+    std::thread t1(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight,x2,partitionHeight*2-1);
+    std::thread t2(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*2,x2,partitionHeight*3-1);
+    std::thread t3(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*3,x2,partitionHeight*4-1);
+    std::thread t4(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*4,x2,partitionHeight*5-1);
+    std::thread t5(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*5,x2,partitionHeight*6-1);
+    std::thread t6(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*6,x2,partitionHeight*7-1);
+    std::thread t7(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*7,x2,partitionHeight*8-1);
+    t0.join();
+    t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
+    t5.join();
+    t6.join();
+    t7.join();
+    return renderArray;
 }
 std::vector<std::vector<Color>> generateImage(double scale, int maxIterations, int x1, int y1, int x2, int y2) {
     std::vector<std::vector<Color>> renderArray;
     prepBuffer(renderArray, scale, x1, y1, x2, y2);
     //loop through the given space, checking each pixel's divergence.
     for (int i = y1; i < y2; i++){
-        if (i%50 == 0){std::cout << "Rendering row: " << i << "\t\t\r";}
         for (int j = x1; j < x2; j++){
             Color pixelColor = getPixelColor(j, i, scale, maxIterations);
             plot(renderArray, j-x1, i-y1, pixelColor); //j is current x coordinate. i is current y coordinate.
@@ -123,15 +146,30 @@ void averageAndDeviationOfFunction(F functiontotime, int timestorun) {
         numeratorSum += std::pow(runtimes.at(i) - mean,2);
     }
     auto standardDeviation = std::sqrt((numeratorSum)/timestorun);
-    std::cout << timestorun << " iterations. Average: " << mean << "ms. Standard Deviation: " << standardDeviation << "ms.\n";
+    std::cout << timestorun << " iterations. ";
+    for(int i = 0; i < runtimes.size(); i++) {
+		std::cout << runtimes.at(i) << "ms ";
+	}
+	std::cout << "\nAverage: " << mean << "ms. Standard Deviation: " << standardDeviation << "ms.\n";
 }
 
 void testFunction(){
     generateImage(200,255,0,0,700,400);
 }
+void threadedFourTestFunction(){
+	threadedFourGenerateImage(200,255,0,0,700,400);
+}
+void threadedEightTestFunction(){
+	threadedEightGenerateImage(200,255,0,0,700,400);
+}
 int main() {
     //Algorithm designed after pseudocode from wikipedia.
-    //averageAndDeviationOfFunction([=](){testFunction();},10);
+    std::cout << "Running Serial algorith tests...\n";
+    averageAndDeviationOfFunction([=](){testFunction();},10);
+    std::cout << "Running 4 thread algorithm tests...\n";
+    averageAndDeviationOfFunction([=](){threadedFourTestFunction();},10);
+    std::cout << "Running 8 thread algorithm tests...\n";
+    averageAndDeviationOfFunction([=](){threadedEightTestFunction();},10);
     writeFile(threadedFourGenerateImage(200,255,0,0,700,400));
     //writeFile(generateImage(200,255,0,0,700,400));
     std::cout << "See mandelbrot.ppm for image.\n";
