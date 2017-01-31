@@ -2,12 +2,13 @@
 CS3100 section 001, fall 2017 */
 #include <iostream>
 #include <fstream>
-//#include <functional>
+#include <functional>
 #include<vector>
 #include <chrono>
 #include<numeric>
 #include<cmath>
 #include <thread>
+#include <mutex>
 
 struct Color {
         int red;
@@ -19,8 +20,10 @@ void plot(std::vector< std::vector<Color> > &renderArray, int x, int y, Color co
     renderArray.at(y).at(x) = color;
 }
 
-Color getPixelColor(int pixelx, int pixely, double scale, int maxIterations){
+Color getPixelColor(int pixelx, int pixely, double scale){
+	int maxIterations = 255;
     //use linear interpolation to find the correct complex number.
+    //std::cout << "Interpolating.\n";
     double x0 = ((pixelx/scale) - 2.5); //scaled x coordinate of pixel(scaled to lie in the Mandelbrot X scale(-2.5, 1))
     double y0 = ((pixely/scale) - 1); //scaled y coordinate of pixel(scaled to lie in the Mandelbrot Y scale(-1, 1))
     double x = 0.0;
@@ -36,12 +39,12 @@ Color getPixelColor(int pixelx, int pixely, double scale, int maxIterations){
     color.red = color.green = color.blue = std::log(iteration)*255/std::log(maxIterations);
     return color;
 }
-void prepBuffer(std::vector< std::vector<Color> > &renderArray, int x1, int y1, int x2, int y2){
-    renderArray.reserve(y2-y1);
-	for (int i = 0; i < y2-y1; i++) {
+void prepBuffer(std::vector< std::vector<Color> > &renderArray, int height, int width){
+    renderArray.reserve(height);
+	for (int i = 0; i < height; i++) {
 	    std::vector<Color> newRow;
-	    newRow.reserve(x2-x1);
-	    for (int j=0; j<x2-x1;j++) {
+	    newRow.reserve(width);
+	    for (int j=0; j<width;j++) {
             Color color;
             newRow.push_back(color);
         }
@@ -49,62 +52,57 @@ void prepBuffer(std::vector< std::vector<Color> > &renderArray, int x1, int y1, 
 	}
 }
 
-void threadedGeneratePartial(std::vector<std::vector<Color>> &renderArray, double scale, int maxIterations, int x1, int y1, int x2, int y2){
-    for (int i = y1; i <= y2; i++) {
+void generatePartial(std::vector<std::vector<Color>> &renderArray, double scale, int x1, int y1, int x2, int y2){
+	//std::cout << "Generating partial.\n";
+    for (int i = y1; i < y2; i++) {
         for (int j = x1; j<x2; j++) {
-            Color pixelColor = getPixelColor(j,i,scale,maxIterations);
+			//std::cout << "Pixel (" << j << "," << i << ").\n";
+            Color pixelColor = getPixelColor(j,i,scale);
+            //std::cout << "Plotting.\n";
             plot(renderArray, j, i, pixelColor);
         }
     }
 }
-std::vector<std::vector<Color>> threadedFourGenerateImage(double scale, int maxIterations, int x1, int y1, int x2, int y2){
-    //divide image into numthreads parts vertically.
-    int partitionHeight = (y2-y1)/4;
+
+std::vector<std::vector<Color>> generateImage() {
+	double scale = 200;
+	int width = scale * 3.5;//Mandelbrot set lies between x = -2.5 and x=1. 3.5 units wide.
+	int height = scale * 2;//Also lies between y = -1 and y = 1. 2 units tall.
     std::vector<std::vector<Color>> renderArray;
-    prepBuffer(renderArray,x1,y1,x2,y2);
-    std::thread t0(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1,x2,partitionHeight-1);
-    std::thread t1(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight,x2,partitionHeight*2-1);
-    std::thread t2(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*2, x2,partitionHeight*3-1);
-    std::thread t3(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*3,x2,partitionHeight*4-1);
-    t0.join();
-    t1.join();
-    t2.join();
-    t3.join();
-    return renderArray;
-}
-std::vector<std::vector<Color>> threadedEightGenerateImage(double scale, int maxIterations, int x1, int y1, int x2, int y2){
-    //divide image into numthreads parts vertically.
-    int partitionHeight = (y2-y1)/8;
-    std::vector<std::vector<Color>> renderArray;
-    prepBuffer(renderArray,x1,y1,x2,y2);
-    std::thread t0(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1,x2,partitionHeight-1);
-    std::thread t1(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight,x2,partitionHeight*2-1);
-    std::thread t2(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*2,x2,partitionHeight*3-1);
-    std::thread t3(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*3,x2,partitionHeight*4-1);
-    std::thread t4(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*4,x2,partitionHeight*5-1);
-    std::thread t5(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*5,x2,partitionHeight*6-1);
-    std::thread t6(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*6,x2,partitionHeight*7-1);
-    std::thread t7(threadedGeneratePartial,std::ref(renderArray),scale,maxIterations,x1,y1 + partitionHeight*7,x2,partitionHeight*8-1);
-    t0.join();
-    t1.join();
-    t2.join();
-    t3.join();
-    t4.join();
-    t5.join();
-    t6.join();
-    t7.join();
-    return renderArray;
-}
-std::vector<std::vector<Color>> generateImage(double scale, int maxIterations, int x1, int y1, int x2, int y2) {
-    std::vector<std::vector<Color>> renderArray;
-    prepBuffer(renderArray, x1, y1, x2, y2);
+    prepBuffer(renderArray, height, width);
     //loop through the given space, checking each pixel's divergence.
-    for (int i = y1; i < y2; i++){
-        for (int j = x1; j < x2; j++){
-            Color pixelColor = getPixelColor(j, i, scale, maxIterations);
-            plot(renderArray, j-x1, i-y1, pixelColor); //j is current x coordinate. i is current y coordinate.
+    for (int i = 0; i < height; i++){
+        for (int j = 0; j < width; j++){
+            Color pixelColor = getPixelColor(j, i, scale);
+            plot(renderArray, j, i, pixelColor); //j is current x coordinate. i is current y coordinate.
         }
     }
+    return renderArray;
+}
+
+std::vector<std::vector<Color>> newGenerateImage(int numThreads) {
+	double scale = 200;
+	int width = scale * 3.5;//Mandelbrot set lies between x = -2.5 and x=1. 3.5 units wide.
+	int height = scale * 2;//Also lies between y = -1 and y = 1. 2 units tall.
+    std::vector<std::vector<Color>> renderArray;
+    prepBuffer(renderArray, height, width);
+    
+    //std::cout << "Buffer prepared.\n";
+    std::thread threads[numThreads];
+    int partitionHeight = (height)/numThreads;
+    std::cout << partitionHeight << " pixel partitions.\n";
+    for(int i = 0; i < numThreads; i++) {
+		//std::cout << "Starting partition " << i << ". ";
+		int x1 = 0;
+		int y1 = i*partitionHeight;
+		int x2 = width;
+		int y2 = ((i+1)*partitionHeight);
+		//std::cout << "Area: (" << x1 << "," << y1 << ") to (" << x2 << "," << y2 << ").\n";
+		threads[i] = std::thread(generatePartial,std::ref(renderArray),scale,x1,y1,x2,y2);
+	}
+	for (int i = 0; i < numThreads; i++) {
+		threads[i].join();
+	}
     return renderArray;
 }
 void writeFile(std::vector<std::vector<Color>> renderArray) {
@@ -124,13 +122,12 @@ void writeFile(std::vector<std::vector<Color>> renderArray) {
     }
 }
 
-template < typename F>
-auto timeFunction(F functiontotime){
-    auto starttime = std::chrono::steady_clock::now();
-    functiontotime();
-    auto endtime = std::chrono::steady_clock::now();
-    auto timetaken = endtime - starttime;
-    return std::chrono::duration_cast<std::chrono::milliseconds>(timetaken);
+auto newTimeFunction(std::function<void(void)> functiontotime){
+	auto starttime = std::chrono::steady_clock::now();
+	functiontotime();
+	auto endtime = std::chrono::steady_clock::now();
+	auto timetaken = endtime - starttime;
+	return std::chrono::duration_cast<std::chrono::milliseconds>(timetaken);
 }
 
 template < typename F>
@@ -154,23 +151,23 @@ void averageAndDeviationOfFunction(F functiontotime, int timestorun) {
 }
 
 void testFunction(){
-    generateImage(200,255,0,0,700,400);
+    newGenerateImage(1);
 }
-void threadedFourTestFunction(){
-	threadedFourGenerateImage(200,255,0,0,700,400);
-}
-void threadedEightTestFunction(){
-	threadedEightGenerateImage(200,255,0,0,700,400);
+void testFunction2(){
+    newGenerateImage(4);
 }
 int main() {
     //Algorithm designed after pseudocode from wikipedia.
-    std::cout << "Running Serial algorith tests...\n";
-    averageAndDeviationOfFunction([=](){testFunction();},10);
-    std::cout << "Running 4 thread algorithm tests...\n";
-    averageAndDeviationOfFunction([=](){threadedFourTestFunction();},10);
-    std::cout << "Running 8 thread algorithm tests...\n";
-    averageAndDeviationOfFunction([=](){threadedEightTestFunction();},10);
-    writeFile(threadedFourGenerateImage(200,255,0,0,700,400));
-    //writeFile(generateImage(200,255,0,0,700,400));
+    //std::cout << "Running Serial algorith tests...\n";
+    //averageAndDeviationOfFunction([=](){testFunction();},10);
+    //std::cout << "Running 4 thread algorithm tests...\n";
+    //averageAndDeviationOfFunction([=](){threadedFourTestFunction();},10);
+    //std::cout << "Running 8 thread algorithm tests...\n";
+    //averageAndDeviationOfFunction([=](){threadedEightTestFunction();},10);
+    //writeFile(threadedFourGenerateImage(200,255,0,0,700,400));
+    //averageAndDeviationOfFunction([=](){testFunction();},10);
+    //averageAndDeviationOfFunction([=](){testFunction2();},10);
+    //writeFile(newGenerateImage(4));
+    std::cout << "Time taken: " << newTimeFunction([=](){testFunction2();}).count() << "ms.\n";
     std::cout << "See mandelbrot.ppm for image.\n";
 }
