@@ -64,22 +64,6 @@ void generatePartial(std::vector<std::vector<Color>> &renderArray, double scale,
     }
 }
 
-std::vector<std::vector<Color>> generateImage() {
-	double scale = 200;
-	int width = scale * 3.5;//Mandelbrot set lies between x = -2.5 and x=1. 3.5 units wide.
-	int height = scale * 2;//Also lies between y = -1 and y = 1. 2 units tall.
-    std::vector<std::vector<Color>> renderArray;
-    prepBuffer(renderArray, height, width);
-    //loop through the given space, checking each pixel's divergence.
-    for (int i = 0; i < height; i++){
-        for (int j = 0; j < width; j++){
-            Color pixelColor = getPixelColor(j, i, scale);
-            plot(renderArray, j, i, pixelColor); //j is current x coordinate. i is current y coordinate.
-        }
-    }
-    return renderArray;
-}
-
 std::vector<std::vector<Color>> newGenerateImage(int numThreads) {
 	double scale = 200;
 	int width = scale * 3.5;//Mandelbrot set lies between x = -2.5 and x=1. 3.5 units wide.
