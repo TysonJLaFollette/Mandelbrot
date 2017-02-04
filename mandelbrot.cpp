@@ -8,6 +8,7 @@ CS3100 section 001, fall 2017 */
 #include <thread>
 #include <mutex>
 #include "analysis.h"
+#include "threadsafequeue.h"
 
 struct Color {
         int red;
