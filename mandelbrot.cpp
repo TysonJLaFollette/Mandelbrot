@@ -1,4 +1,4 @@
-/*Serial mandelbrot generator by Tyson J. LaFollette A00987957
+/*Threaded mandelbrot generator by Tyson J. LaFollette A00987957
 CS3100 section 001, fall 2017 */
 #include <iostream>
 #include <fstream>
@@ -106,7 +106,7 @@ void writeFile(std::vector<std::vector<Color>> renderArray) {
     }
 }
 
-auto newTimeFunction(std::function<void(void)> functiontotime){
+auto timeFunction(std::function<void(void)> functiontotime){
 	auto starttime = std::chrono::steady_clock::now();
 	functiontotime();
 	auto endtime = std::chrono::steady_clock::now();
@@ -114,8 +114,7 @@ auto newTimeFunction(std::function<void(void)> functiontotime){
 	return std::chrono::duration_cast<std::chrono::milliseconds>(timetaken);
 }
 
-template < typename F>
-void averageAndDeviationOfFunction(F functiontotime, int timestorun) {
+void averageAndDeviationOfFunction(std::function<void(void)> functiontotime, int timestorun) {
     auto mean = 0.0;
     auto numeratorSum = 0.0;
     std::vector<double> runtimes;
@@ -150,8 +149,8 @@ int main() {
     //averageAndDeviationOfFunction([=](){threadedEightTestFunction();},10);
     //writeFile(threadedFourGenerateImage(200,255,0,0,700,400));
     //averageAndDeviationOfFunction([=](){testFunction();},10);
-    //averageAndDeviationOfFunction([=](){testFunction2();},10);
+    averageAndDeviationOfFunction([=](){testFunction2();},10);
     //writeFile(newGenerateImage(4));
-    std::cout << "Time taken: " << newTimeFunction([=](){testFunction2();}).count() << "ms.\n";
+    //std::cout << "Time taken: " << timeFunction([=](){testFunction2();}).count() << "ms.\n";
     std::cout << "See mandelbrot.ppm for image.\n";
 }
