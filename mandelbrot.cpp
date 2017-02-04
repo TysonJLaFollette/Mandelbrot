@@ -2,13 +2,12 @@
 CS3100 section 001, fall 2017 */
 #include <iostream>
 #include <fstream>
-#include <functional>
-#include<vector>
-#include <chrono>
-#include<numeric>
-#include<cmath>
+#include <vector>
+#include <numeric>
+#include <cmath>
 #include <thread>
 #include <mutex>
+#include "analysis.h"
 
 struct Color {
         int red;
@@ -106,32 +105,7 @@ void writeFile(std::vector<std::vector<Color>> renderArray) {
     }
 }
 
-auto timeFunction(std::function<void(void)> functiontotime){
-	auto starttime = std::chrono::steady_clock::now();
-	functiontotime();
-	auto endtime = std::chrono::steady_clock::now();
-	auto timetaken = endtime - starttime;
-	return std::chrono::duration_cast<std::chrono::milliseconds>(timetaken);
-}
 
-void averageAndDeviationOfFunction(std::function<void(void)> functiontotime, int timestorun) {
-    auto mean = 0.0;
-    auto numeratorSum = 0.0;
-    std::vector<double> runtimes;
-    for (int i = 0; i < timestorun; i++) {
-        runtimes.push_back(timeFunction([=](){functiontotime();}).count());
-    }
-    mean = std::accumulate(runtimes.begin(), runtimes.end(), 0)/(double)timestorun;
-    for (int i = 0; i < timestorun; i++) {
-        numeratorSum += std::pow(runtimes.at(i) - mean,2);
-    }
-    auto standardDeviation = std::sqrt((numeratorSum)/timestorun);
-    std::cout << timestorun << " iterations. ";
-    for(unsigned int i = 0; i < runtimes.size(); i++) {
-		std::cout << runtimes.at(i) << "ms ";
-	}
-	std::cout << "\nAverage: " << mean << "ms. Standard Deviation: " << standardDeviation << "ms.\n";
-}
 
 void testFunction(){
     newGenerateImage(1);
@@ -141,14 +115,6 @@ void testFunction2(){
 }
 int main() {
     //Algorithm designed after pseudocode from wikipedia.
-    //std::cout << "Running Serial algorith tests...\n";
-    //averageAndDeviationOfFunction([=](){testFunction();},10);
-    //std::cout << "Running 4 thread algorithm tests...\n";
-    //averageAndDeviationOfFunction([=](){threadedFourTestFunction();},10);
-    //std::cout << "Running 8 thread algorithm tests...\n";
-    //averageAndDeviationOfFunction([=](){threadedEightTestFunction();},10);
-    //writeFile(threadedFourGenerateImage(200,255,0,0,700,400));
-    //averageAndDeviationOfFunction([=](){testFunction();},10);
     averageAndDeviationOfFunction([=](){testFunction2();},10);
     //writeFile(newGenerateImage(4));
     //std::cout << "Time taken: " << timeFunction([=](){testFunction2();}).count() << "ms.\n";
