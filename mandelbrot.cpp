@@ -9,6 +9,7 @@ CS3100 section 001, fall 2017 */
 #include <mutex>
 #include "analysis.h"
 #include "threadsafequeue.h"
+#include "threadpool.h"
 
 struct Color {
         int red;
@@ -56,14 +57,33 @@ void generatePartial(std::vector<std::vector<Color>> &renderArray, double scale,
 	//std::cout << "Generating partial.\n";
     for (int i = y1; i < y2; i++) {
         for (int j = x1; j<x2; j++) {
-			//std::cout << "Pixel (" << j << "," << i << ").\n";
+			//std::cout << "Pixel (" << j << "," << i << "). \n";
             Color pixelColor = getPixelColor(j,i,scale);
-            //std::cout << "Plotting.\n";
+            //std::cout << "Plotting. ";
+            //if (pixelColor.red < 0 || pixelColor.red > 255) {std::cout << "Pixel " << j << "," << i << " " << pixelColor.red << "\n";}
+            //std::cout << pixelColor.red << " ";
             plot(renderArray, j, i, pixelColor);
         }
     }
 }
 
+
+void writeFile(std::vector<std::vector<Color>> renderArray) {
+    std::cout << "Writing file!";
+    std::ofstream fout("mandelbrot.ppm");
+    if (fout.is_open()) {
+        fout << "P3\n" << renderArray.at(0).size() << " " << renderArray.size() << " 255" << "\n";
+        for (int i = 0; (unsigned)i < renderArray.size(); i++) {
+            if (i%50 == 0){std::cout << "Writing row: " << i << "\t\t\r";}
+            for (int j = 0; (unsigned)j < renderArray.at(0).size(); j++) {
+                fout << renderArray.at(i).at(j).red << " " << renderArray.at(i).at(j).green << " " << renderArray.at(i).at(j).blue << " ";
+            }
+            fout << "\n";
+        }
+        fout.close();
+        return;
+    }
+}
 std::vector<std::vector<Color>> newGenerateImage(int numThreads) {
 	double scale = 200;
 	int width = scale * 3.5;//Mandelbrot set lies between x = -2.5 and x=1. 3.5 units wide.
@@ -89,35 +109,60 @@ std::vector<std::vector<Color>> newGenerateImage(int numThreads) {
 	}
     return renderArray;
 }
-void writeFile(std::vector<std::vector<Color>> renderArray) {
-    std::cout << "Writing file!";
-    std::ofstream fout("mandelbrot.ppm");
-    if (fout.is_open()) {
-        fout << "P3\n" << renderArray.at(0).size() << " " << renderArray.size() << " 255" << "\n";
-        for (int i = 0; (unsigned)i < renderArray.size(); i++) {
-            if (i%50 == 0){std::cout << "Writing row: " << i << "\t\t\r";}
-            for (int j = 0; (unsigned)j < renderArray.at(0).size(); j++) {
-                fout << renderArray.at(i).at(j).red << " " << renderArray.at(i).at(j).green << " " << renderArray.at(i).at(j).blue << " ";
-            }
-            fout << "\n";
-        }
-        fout.close();
-        return;
-    }
+std::vector<std::vector<Color>> poolGenerateImage(ThreadPool& pool) {
+	double scale = 200;
+	int width = scale * 3.5;//Mandelbrot set lies between x = -2.5 and x=1. 3.5 units wide.
+	int height = scale * 2;//Also lies between y = -1 and y = 1. 2 units tall.
+    std::vector<std::vector<Color>> renderArray;
+    prepBuffer(renderArray, height, width);  
+    //std::cout << "Buffer prepared.\n";
+
+	int numThreads = pool.getNumThreads();
+    int partitionHeight = (height)/numThreads;
+    std::cout << partitionHeight << " pixel partitions.\n";
+    
+    for(int i = 0; i < numThreads; i++) {
+		std::cout << "Queueing partition " << i << ". ";
+		int x1 = 0;
+		int y1 = i*partitionHeight;
+		int x2 = width;
+		int y2 = ((i+1)*partitionHeight);
+		std::function<void()> myFunc = [&](){generatePartial(renderArray,scale,x1,y1,x2,y2);};
+		std::cout << "Area: [" << x1 << "," << y1 << "] to [" << x2 << "," << y2 << ").\n";
+		pool.post(myFunc);
+		//std::cout << "Posted.\n";
+	}
+	pool.stop();
+    return renderArray;
 }
-
-
 
 void testFunction(){
-    newGenerateImage(1);
+	std::cout << "Generating with one thread in pool.\n";
+    ThreadPool pool(1);
+    poolGenerateImage(pool);
 }
 void testFunction2(){
-    newGenerateImage(4);
+	std::cout << "Generating with 4 threads in pool.\n";
+    ThreadPool pool(4);
+    poolGenerateImage(pool);
 }
+void testFunction3(){
+	std::cout << "Generating with 8 threads in pool.\n";
+    ThreadPool pool(8);
+    poolGenerateImage(pool);
+}
+
 int main() {
     //Algorithm designed after pseudocode from wikipedia.
-    averageAndDeviationOfFunction([=](){testFunction2();},10);
+    //ThreadPool pool(1);
+    //averageAndDeviationOfFunction([=](){testFunction();},10);
+    //writeFile(poolGenerateImage(pool));
+    //averageAndDeviationOfFunction([=](){testFunction2();},10);
     //writeFile(newGenerateImage(4));
     //std::cout << "Time taken: " << timeFunction([=](){testFunction2();}).count() << "ms.\n";
+    averageAndDeviationOfFunction([=](){testFunction();},10);
+    averageAndDeviationOfFunction([=](){testFunction2();},10);
+    averageAndDeviationOfFunction([=](){testFunction3();},10);
+    writeFile(newGenerateImage(4));
     std::cout << "See mandelbrot.ppm for image.\n";
 }
